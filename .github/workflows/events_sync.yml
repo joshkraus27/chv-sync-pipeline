@@ -1,0 +1,36 @@
+name: Yodel Events Sync
+
+on:
+  schedule:
+    # Every hour at minute 30 (offset from the GeoDirectory sync's :00 so the
+    # two never contend for the same Supabase write window).
+    - cron: '30 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run events sync
+        env:
+          # Required: the Yodel feed URL. The feed is unauthenticated (token is
+          # in the path), so the whole URL is treated as secret.
+          YODEL_FEED_URL: ${{ secrets.YODEL_FEED_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python events_sync.py
